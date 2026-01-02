@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>牙醫申報控管 App V2</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --bg: #f4f7f6;
+            --card: #ffffff;
+            --text: #333333;
+            --gray-light: #e9ecef;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            padding-bottom: 80px;
+        }
+        
+        /* --- 儀表板區 --- */
+        .dashboard {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 15px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border-bottom-left-radius: 15px;
+            border-bottom-right-radius: 15px;
+        }
+        
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        input[type="month"] {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.4);
+            color: white;
+            padding: 6px 10px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: inherit;
+        }
+
+        .batch-btn {
+            background: rgba(255,255,255,0.9);
+            color: var(--primary);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .limit-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 10px;
+            background: rgba(0,0,0,0.1);
+            padding: 8px;
+            border-radius: 8px;
+        }
+        .limit-row input {
+            width: 100px;
+            padding: 5px;
+            border-radius: 5px;
+            border: none;
+            text-align: right;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stat-box {
+            background: rgba(255,255,255,0.15);
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+            backdrop-filter: blur(5px);
+        }
+        
+        .stat-box.highlight {
+            background: white;
+            color: var(--primary);
+            grid-column: span 2;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-label { font-size: 12px; opacity: 0.9; margin-bottom: 2px; }
+        .stat-value { font-size: 22px; font-weight: 800; }
+        .stat-value.big { font-size: 32px; color: var(--danger); line-height: 1.2; }
+
+        /* --- 支援提醒 --- */
+        .support-alert {
+            margin-top: 10px;
+            background: rgba(0,0,0,0.25);
+            padding: 10px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .support-alert.done { background: #28a745; border: 1px solid #208838; }
+        .support-alert.alert { background: #dc3545; border: 1px solid #bd2130; animation: pulse 2s infinite; }
+
+        /* --- 日曆列表 --- */
+        .calendar-list { padding: 15px; }
+        .day-card {
+            background: var(--card);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            padding: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        
+        .day-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .date-title { font-size: 16px; font-weight: bold; color: #444; }
+        .day-total { font-size: 13px; color: #666; font-weight: normal; }
+        .day-total span { font-weight: bold; color: var(--primary); font-size: 15px; }
+
+        /* 整日輸入 */
+        .whole-day-input-row {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            background: #f8f9fa;
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+        .whole-day-label {
+            font-size: 13px;
+            color: #555;
+            white-space: nowrap;
+            margin-right: 10px;
+        }
+        .whole-day-field {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 6px;
+            text-align: right;
+            font-size: 15px;
+        }
+        .whole-day-field:focus { outline: none; border-color: var(--primary); background: #fff; }
+
+        /* 分診輸入 */
+        .sessions-row { display: flex; gap: 8px; }
+        .session-item { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        
+        .session-toggle {
+            padding: 8px;
+            border: 1px solid #ddd;
+            background: #fff;
+            color: #aaa;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .session-toggle.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+        
+        .session-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 6px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 14px;
+            display: none; 
+            background: #f8f9fa;
+        }
+        .session-input:focus { outline: none; border-color: var(--primary); background: #fff; }
+        .session-toggle.active + .session-input { display: block; }
+        
+        .is-weekend { color: var(--danger); }
+
+        /* --- 排班設定 Modal --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        .batch-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid #eee;
+        }
+        .batch-label { width: 50px; font-weight: bold; color: #555; }
+        .batch-checks { display: flex; gap: 10px; }
+        .batch-check-group { display: flex; align-items: center; gap: 3px; font-size: 12px; }
+        .modal-actions { margin-top: 20px; display: flex; gap: 10px; }
+        .btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-cancel { background: #eee; color: #555; }
+        .btn-confirm { background: var(--primary); color: white; }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.8; } 100% { opacity: 1; } }
+        
+        .footer-note { text-align: center; font-size: 12px; color: #aaa; padding: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <div class="header-top">
+            <div class="header-controls">
+                <input type="month" id="monthPicker">
+                <button class="batch-btn" onclick="openBatchModal()">⚙️ 快速排班</button>
+            </div>
+        </div>
+
+        <div class="limit-row">
+            <span>本月目標上限</span>
+            <input type="number" id="targetLimit" value="500000">
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-label">目前累計</div>
+                <div class="stat-value" id="currentTotal">0</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">剩餘額度</div>
+                <div class="stat-value" id="remainingPoints">0</div>
+            </div>
+            <div class="stat-box highlight">
+                <div class="stat-label">剩餘診次平均需做 (目標)</div>
+                <div class="stat-value big" id="averageNeeded">0</div>
+                <div class="stat-label" style="font-size:11px; margin-top:4px;">(剩餘 <span id="remainingSessions">0</span> 診)</div>
+            </div>
+        </div>
+
+        <div class="support-alert alert" id="supportBox" onclick="toggleSupport()">
+            <span id="supportText">⚠️ 本月尚未申報支援！(點擊切換)</span>
+            <input type="checkbox" id="supportCheck" style="display:none;">
+        </div>
+    </div>
+
+    <div class="calendar-list" id="calendarContainer"></div>
+    <div class="footer-note">V2.0 - 資料自動儲存於此手機</div>
+
+    <div class="modal-overlay" id="batchModal">
+        <div class="modal-content">
+            <div class="modal-title">每週排班規律設定</div>
+            <div id="batchRows">
+                </div>
+            <p style="font-size:12px; color:#888; margin-top:10px;">*按下確認將套用至本月所有日期 (已輸入的點數不會消失)</p>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeBatchModal()">取消</button>
+                <button class="btn btn-confirm" onclick="saveBatchSchedule()">確認套用</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    const STORAGE_KEY = 'DentalApp_Data_v2';
+    let appData = {};
+    const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
+
+    function init() {
+        const today = new Date();
+        const monthInput = document.getElementById('monthPicker');
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        monthInput.value = `${yyyy}-${mm}`;
+        
+        loadData();
+        renderPage();
+        renderBatchModal(); // 準備 Modal 內容
+
+        monthInput.addEventListener('change', renderPage);
+        document.getElementById('targetLimit').addEventListener('change', (e) => {
+            const key = getKey();
+            if (!appData[key]) appData[key] = initMonthData();
+            appData[key].target = Number(e.target.value);
+            saveData();
+            updateStats();
+        });
+    }
+
+    function getKey() { return document.getElementById('monthPicker').value; }
+
+    function initMonthData() {
+        return {
+            target: 500000,
+            supportDone: false,
+            days: {} 
+        };
+    }
+
+    function loadData() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) appData = JSON.parse(stored);
+    }
+
+    function saveData() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    function renderPage() {
+        const key = getKey();
+        const [year, month] = key.split('-').map(Number);
+
+        if (!appData[key]) appData[key] = initMonthData();
+
+        document.getElementById('targetLimit').value = appData[key].target;
+        updateSupportUI();
+        generateCalendarList(year, month);
+        updateStats();
+    }
+
+    function generateCalendarList(year, month) {
+        const container = document.getElementById('calendarContainer');
+        container.innerHTML = '';
+        
+        const daysInMonth = new Date(year, month, 0).getDate();
+        const key = getKey();
+        const monthData = appData[key].days;
+
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month - 1, d);
+            const dayOfWeek = dateObj.getDay();
+            const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+
+            // 資料結構初始化，加入 wholeDay
+            if (!monthData[d]) {
+                monthData[d] = {
+                    'wholeDay': '',
+                    'm': { active: false, val: '' },
+                    'a': { active: false, val: '' },
+                    'e': { active: false, val: '' }
+                };
+            }
+            // 舊資料相容性檢查
+            if (typeof monthData[d].wholeDay === 'undefined') {
+                monthData[d].wholeDay = '';
+            }
+
+            const dayData = monthData[d];
+            const card = document.createElement('div');
+            card.className = 'day-card';
+            
+            // 標題與小計
+            const titleHTML = `
+                <div class="day-header">
+                    <div class="date-title ${isWeekend ? 'is-weekend' : ''}">${month}/${d} (${weekDays[dayOfWeek]})</div>
+                    <div class="day-total">總計: <span id="subtotal-${d}">0</span></div>
+                </div>
+            `;
+
+            // 整日輸入
+            const wholeDayHTML = `
+                <div class="whole-day-input-row">
+                    <span class="whole-day-label">全日總計</span>
+                    <input type="number" class="whole-day-field" 
+                           placeholder="若填此欄則自動加總" 
+                           value="${dayData.wholeDay}"
+                           oninput="updateWholeDay(${d}, this.value)">
+                </div>
+            `;
+            
+            // 分診輸入
+            let sessionsHTML = '<div class="sessions-row">';
+            const sessions = [
+                { id: 'm', name: '早' },
+                { id: 'a', name: '午' },
+                { id: 'e', name: '晚' }
+            ];
+
+            sessions.forEach(sess => {
+                const isActive = dayData[sess.id].active ? 'active' : '';
+                const val = dayData[sess.id].val;
+                sessionsHTML += `
+                    <div class="session-item">
+                        <div class="session-toggle ${isActive}" onclick="toggleSession(${d}, '${sess.id}')">
+                            ${sess.name}
+                        </div>
+                        <input type="number" class="session-input" 
+                               value="${val}" placeholder="點數"
+                               oninput="updateSessionValue(${d}, '${sess.id}', this.value)">
+                    </div>
+                `;
+            });
+            sessionsHTML += '</div>';
+
+            card.innerHTML = titleHTML + wholeDayHTML + sessionsHTML;
+            container.appendChild(card);
+            
+            updateDaySubtotalUI(d);
+        }
+    }
+
+    // --- 資料操作 ---
+
+    function updateWholeDay(day, val) {
+        const key = getKey();
+        appData[key].days[day].wholeDay = val;
+        saveData();
+        updateDaySubtotalUI(day);
+        updateStats();
+    }
+
+    function toggleSession(day, sessId) {
+        const key = getKey();
+        const currentActive = appData[key].days[day][sessId].active;
+        appData[key].days[day][sessId].active = !currentActive;
+        saveData();
+        renderPage(); // 重繪以更新 UI
+    }
+
+    function updateSessionValue(day, sessId, val) {
+        const key = getKey();
+        appData[key].days[day][sessId].val = val;
+        saveData();
+        updateDaySubtotalUI(day);
+        updateStats();
+    }
+
+    function updateDaySubtotalUI(day) {
+        const key = getKey();
+        const data = appData[key].days[day];
+        
+        let total = Number(data.wholeDay) || 0; // 先加整日
+        if (data.m.active) total += Number(data.m.val) || 0;
+        if (data.a.active) total += Number(data.a.val) || 0;
+        if (data.e.active) total += Number(data.e.val) || 0;
+
+        document.getElementById(`subtotal-${day}`).innerText = total.toLocaleString();
+    }
+
+    function updateStats() {
+        const key = getKey();
+        const data = appData[key];
+        const target = data.target;
+        
+        let currentTotal = 0;
+        let remainingSessions = 0;
+
+        for (let d in data.days) {
+            const dayObj = data.days[d];
+            
+            // 計算當日總分
+            let daySum = Number(dayObj.wholeDay) || 0;
+            let m = Number(dayObj.m.val) || 0;
+            let a = Number(dayObj.a.val) || 0;
+            let e = Number(dayObj.e.val) || 0;
+
+            // 只有 active 的分診才算入總分 (為了防呆)
+            if(dayObj.m.active) daySum += m;
+            if(dayObj.a.active) daySum += a;
+            if(dayObj.e.active) daySum += e;
+
+            currentTotal += daySum;
+
+            // 計算剩餘診次
+            // 邏輯：如果這一天有填寫任何數字(不管是全日還是分診)，就視為「已完成」，不計入剩餘診次
+            const hasValue = (dayObj.wholeDay !== '' && dayObj.wholeDay !== null) ||
+                             (dayObj.m.active && dayObj.m.val !== '') ||
+                             (dayObj.a.active && dayObj.a.val !== '') ||
+                             (dayObj.e.active && dayObj.e.val !== '');
+
+            if (!hasValue) {
+                // 還沒填寫，計算 active 的診數
+                if (dayObj.m.active) remainingSessions++;
+                if (dayObj.a.active) remainingSessions++;
+                if (dayObj.e.active) remainingSessions++;
+            }
+        }
+
+        const remainingPoints = target - currentTotal;
+        const averageNeeded = remainingSessions > 0 ? Math.ceil(remainingPoints / remainingSessions) : 0;
+
+        document.getElementById('currentTotal').innerText = currentTotal.toLocaleString();
+        const remElem = document.getElementById('remainingPoints');
+        remElem.innerText = remainingPoints.toLocaleString();
+        remElem.style.color = remainingPoints < 0 ? '#dc3545' : 'white';
+
+        const avgElem = document.getElementById('averageNeeded');
+        if (remainingPoints <= 0) {
+            avgElem.innerText = "已達標";
+            avgElem.style.color = "#28a745";
+        } else if (remainingSessions === 0) {
+            avgElem.innerText = "結束";
+            avgElem.style.color = "#999"; 
+        } else {
+            avgElem.innerText = averageNeeded.toLocaleString();
+            avgElem.style.color = averageNeeded > 50000 ? "#dc3545" : "#007bff";
+        }
+
+        document.getElementById('remainingSessions').innerText = remainingSessions;
+    }
+
+    // --- 排班 Modal 相關 ---
+    
+    function renderBatchModal() {
+        const container = document.getElementById('batchRows');
+        let html = '';
+        weekDays.forEach((w, idx) => {
+            // 週日是0, 我們要把週一放第一個比較習慣，不過 JS getDay 週日是0
+            // 為了方便對應 JS getDay，我們就依照 日(0) -> 六(6) 順序，但介面可以調整
+        });
+        
+        // 為了介面習慣，我們從週一顯示到週日
+        const displayOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon to Sun
+        
+        displayOrder.forEach(dayIdx => {
+            html += `
+                <div class="batch-row">
+                    <div class="batch-label">週${weekDays[dayIdx]}</div>
+                    <div class="batch-checks">
+                        <label class="batch-check-group"><input type="checkbox" id="batch-${dayIdx}-m"> 早</label>
+                        <label class="batch-check-group"><input type="checkbox" id="batch-${dayIdx}-a"> 午</label>
+                        <label class="batch-check-group"><input type="checkbox" id="batch-${dayIdx}-e"> 晚</label>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    function openBatchModal() {
+        document.getElementById('batchModal').style.display = 'flex';
+    }
+    function closeBatchModal() {
+        document.getElementById('batchModal').style.display = 'none';
+    }
+
+    function saveBatchSchedule() {
+        const key = getKey();
+        const [year, month] = key.split('-').map(Number);
+        
+        // 讀取 checkbox 狀態
+        const rule = {};
+        for(let i=0; i<7; i++) {
+            rule[i] = {
+                m: document.getElementById(`batch-${i}-m`).checked,
+                a: document.getElementById(`batch-${i}-a`).checked,
+                e: document.getElementById(`batch-${i}-e`).checked
+            };
+        }
+
+        // 套用至當月
+        if (!appData[key]) appData[key] = initMonthData();
+        const daysInMonth = new Date(year, month, 0).getDate();
+        
+        for (let d = 1; d <= daysInMonth; d++) {
+            const dateObj = new Date(year, month - 1, d);
+            const dayOfWeek = dateObj.getDay(); // 0-6
+            
+            // 確保該日資料結構存在
+            if (!appData[key].days[d]) {
+                 appData[key].days[d] = { wholeDay:'', m:{active:false,val:''}, a:{active:false,val:''}, e:{active:false,val:''} };
+            }
+
+            // 更新 active 狀態 (不覆蓋已輸入的 val)
+            appData[key].days[d].m.active = rule[dayOfWeek].m;
+            appData[key].days[d].a.active = rule[dayOfWeek].a;
+            appData[key].days[d].e.active = rule[dayOfWeek].e;
+        }
+
+        saveData();
+        closeBatchModal();
+        renderPage();
+    }
+
+    // 支援功能
+    function toggleSupport() {
+        const key = getKey();
+        appData[key].supportDone = !appData[key].supportDone;
+        saveData();
+        updateSupportUI();
+    }
+
+    function updateSupportUI() {
+        const key = getKey();
+        const isDone = appData[key] && appData[key].supportDone;
+        const box = document.getElementById('supportBox');
+        const text = document.getElementById('supportText');
+
+        if (isDone) {
+            box.className = 'support-alert done';
+            text.innerText = '✅ 本月已完成支援申報';
+        } else {
+            box.className = 'support-alert alert';
+            text.innerText = '⚠️ 本月尚未申報支援！(點擊切換)';
+        }
+    }
+
+    init();
+</script>
+</body>
+</html>
